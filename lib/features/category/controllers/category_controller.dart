@@ -175,7 +175,7 @@ Future<void> getCategoryList(bool reload, {bool allCategory = false}) async {
 
       for (var column in _categoryList!) {
         print('category list harsh -->${column.toJson()})');
-        await getCategoryItemList1(column.id.toString(), 0, "all", true);
+        await getCategoryItemList1(column.id, 0, "all", true);
       }
 
       _interestSelectedList = List.generate(_categoryList!.length, (index) => false);
@@ -195,51 +195,49 @@ Future<void> getCategoryList(bool reload, {bool allCategory = false}) async {
 
 
 
-Future<List<Item>> getCategoryItemList1(
-     categoryID,  offset, String type, bool notify) async {
-  _offset = offset;
+  Future<List<Item>> getCategoryItemList1(
+       categoryID,
+       offset,
+      String type,
+      bool notify,
+      ) async {
+    _offset = offset;
 
-  // Initialize if null
-  _categoryItemList ??= [];
+    _categoryItemList ??= [];
 
-  _isLoading = true;
-  update(); // Notify loading state
+    try {
+      // Fetch data
+      ItemModel? categoryItem = await categoryServiceInterface.getCategoryItemList(
+        categoryID.toString(),
+        offset,
+        type,
+      );
 
-  try {
-    // Fetch data
-    ItemModel? categoryItem =
-        await categoryServiceInterface.getCategoryItemList(categoryID, offset, type);
+      if (categoryItem != null) {
+        // Debugging logs
+        print('Category list item --> ${categoryItem.toJson()}');
 
-    if (categoryItem != null) {
-      // Debugging logs
-      print('Category list item harsh --> ${categoryItem.toJson()}');
-      print('Current Category ItemList length: ${_categoryItemList!.length}');
+        // Directly assign if items are already of type List<Item>
+        if (categoryItem.items is List<Item>) {
+          return categoryItem.items as List<Item>;
+        }
 
-      // Directly assign if items are already of type List<Item>
-      if (categoryItem.items is List<Item>) {
-        return categoryItem.items as List<Item>;
+        // Parse items if they are in Map<String, dynamic> format
+        final List<Item> items = (categoryItem.items ?? [])
+            .map((item) => Item.fromJson(item as Map<String, dynamic>))
+            .toList();
+
+        _pageSize = categoryItem.totalSize ?? 0;
+
+        return items; // Return the parsed items
       }
-
-      // Parse items if they are in Map<String, dynamic> format
-      final List<Item> items = (categoryItem.items ?? [])
-          .map((item) => Item.fromJson(item as Map<String, dynamic>))
-          .toList();
-
-      // Update the page size
-      _pageSize = categoryItem.totalSize ?? 0;
-
-      return items; // Return the parsed items
+    } catch (e) {
+      print('Error fetching category items: $e');
     }
-  } catch (e) {
-    print('Error fetching category items: $e');
-  } finally {
-    _isLoading = false;
-    if (notify) update(); // Notify listeners of state change
+
+    return [];
   }
 
-  // Return an empty list if no items or on failure
-  return [];
-}
 
 
 
